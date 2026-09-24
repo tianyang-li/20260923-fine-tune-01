@@ -422,7 +422,58 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True llm-rl-train --task math_hard -
   n=32). KL ≈ 0 after 2 steps with lr warmup, as expected. At ~150–200 s/step, the
   README's 501-step GRPO run takes ~1 day on this GPU.
 
-## 7. Model suggestions for this hardware
+## 7. Full fine-tuning runs
+
+Script: `scripts/run_experiments.sh`, committed with the repo and containing the exact
+flags. It runs the jobs one after another and writes `runs/<name>/metrics.jsonl`,
+checkpoints, `runs/<name>.log`, and `runs/<name>.exitcode`. Launched detached so it
+survives the terminal and session:
+
+```bash
+cd /media/lty/hdd-20241206/code/20260923-fine-tune/code-20260923-fine-tune
+PATH=/media/lty/hdd-20241206/code/20260923-fine-tune/.venv/bin:$PATH \
+  setsid nohup scripts/run_experiments.sh > runs/run_experiments.log 2>&1 < /dev/null & disown
+```
+
+Results are read from `metrics.jsonl` (eval keys `eval/...`, per-step keys
+`rollout/...`, `train/...`), for example:
+
+```bash
+python3 -c "import json;[print(r['step'],{k:v for k,v in r['metrics'].items() if k.startswith('eval/')}) for r in map(json.loads,open('runs/format_copy_grpo/metrics.jsonl')) if any(k.startswith('eval/') for k in r['metrics'])]"
+```
+
+### 7.1 format_copy + GRPO, 51 steps — exit 0
+
+Flags: `--steps 51 --batch_size 8 --group_size 6 --max_new_tokens 24 --lr 3e-5
+--ppo_epochs 2 --minibatch_size 8 --grad_accum_steps 6 --clip_eps 0.2 --kl_coef 0.05
+--max_grad_norm 0.5 --warmup_steps 10 --format_copy_eval_n 64 --eval_interval 50
+--save_interval 50`.
+
+| Eval (64 prompts, greedy, seed 123) | step 0 (base) | step 49 (after 50 updates) | step 51 (final) |
+|---|---|---|---|
+| contains `<answer>` tag | 0.000 | 1.000 | 1.000 |
+| strict XML only | 0.000 | 1.000 | 1.000 |
+| exact number match | **0.000** | **1.000** | **1.000** |
+
+| train step | 0 | 5 | 10 | 15 | 20 | 30 | 40 | 50 |
+|---|---|---|---|---|---|---|---|---|
+| mean rollout reward (max 1.3) | 0.154 | 0.210 | 1.298 | 1.300 | 1.300 | 1.300 | 1.298 | 1.300 |
+| approx KL vs base | 0.0006 | 0.0044 | 0.294 | 0.330 | 0.261 | 0.203 | 0.286 | 0.200 |
+
+Total training wall-clock 386 s (~7.1–8.4 s/step), peak GPU allocated 4.28 GB. That's
+lower than the 8.4 GB in §6.2, which was measured before the chunked rollout scoring
+(§5.3). Checkpoints: `runs/format_copy_grpo/checkpoints/step_000050`, `step_000051`.
+
+Interpretation: the base model never uses the `<answer>` XML format (it answers in
+prose or `\boxed{}`). GRPO discovers the format in ~10 updates and then copies the
+number perfectly, so the whole pipeline (sampling, rewards, advantages, clipped loss,
+KL, LoRA updates) works end to end.
+
+### 7.2 math_hard + GRPO, 501 steps
+
+MATH_HARD_NOTEBOOK
+
+## 8. Model suggestions for this hardware
 
 See the table in `README.md` ("Which models can this machine fine-tune?"). Summary:
 0.5B–1.7B models (Qwen2.5-0.5B/1.5B, Qwen2.5-Math-1.5B, Qwen3-0.6B/1.7B, SmolLM2-1.7B,
@@ -430,7 +481,7 @@ Llama-3.2-1B) fit comfortably. 3–4B models are tight (minibatch 1–2, shorter
 7B+ doesn't fit in bf16 and would need 4-bit QLoRA, which isn't implemented. Only the
 default Qwen2.5-Math-1.5B-Instruct was actually run.
 
-## 8. Reproduce from scratch (summary)
+## 9. Reproduce from scratch (summary)
 
 ```bash
 # 1. Get the source and this repo
@@ -447,5 +498,6 @@ llm-rl-train --task format_copy --algo grpo --output_dir runs/smoke --steps 3 \
   --batch_size 8 --group_size 6 --max_new_tokens 24 --format_copy_eval_n 16 \
   --eval_interval 0 --save_interval 0
 
-# 4. Full runs: see README.md "Running on this machine"
+# 4. Full runs (format_copy ~10 min, then math_hard ~1 day)
+setsid nohup scripts/run_experiments.sh > runs/run_experiments.log 2>&1 < /dev/null &
 ```

@@ -88,7 +88,7 @@ minibatch is smaller:
 
 Run from the repo root with the venv active.
 
-### 1. Sanity check: format_copy + GRPO (~8 s/step, ~8.4 GB peak)
+### 1. Sanity check: format_copy + GRPO (~7 s/step, ~4.3 GB peak)
 
 ```bash
 llm-rl-train \
@@ -102,7 +102,7 @@ llm-rl-train \
 ```
 
 About 7 minutes. Watch `rollout/mean_total_reward...` in `metrics.jsonl` rise toward
-~1.3 (the maximum reward).
+~1.3 (the maximum reward). See [Results](#results) for what this produced here.
 
 ### 2. format_copy + REINFORCE
 
@@ -168,6 +168,26 @@ llm-rl-eval --task math_hard \
 
 If you hit CUDA OOM, lower these in order: `--minibatch_size` (raise
 `--grad_accum_steps` to compensate), `--max_new_tokens`, `--group_size`/`--batch_size`.
+
+## Results
+
+Measured on this machine (RTX 2000 Ada 16 GB, Qwen2.5-Math-1.5B-Instruct + LoRA r=16).
+The exact commands are in `scripts/run_experiments.sh`.
+
+### format_copy + GRPO, 51 steps (6.4 min of training)
+
+| Eval (64 held-out prompts, greedy) | Base model | After step 50 | After step 51 |
+|---|---|---|---|
+| Contains `<answer>` tag | 0% | 100% | 100% |
+| Strict `<answer>…</answer>` only | 0% | 100% | 100% |
+| Exact number copied | **0%** | **100%** | **100%** |
+
+Training reward went from 0.15 (step 0) to 1.30, the maximum, by step 10 and stayed
+there. KL to the base model was ≈ 0.2–0.3.
+
+### math_hard + GRPO, 501 steps
+
+MATH_HARD_RESULTS
 
 ## Which models can this machine fine-tune?
 
