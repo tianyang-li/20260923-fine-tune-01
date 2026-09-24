@@ -1,0 +1,33 @@
+[project]
+name = "code-20260923-fine-tune"
+version = "0.1.0"
+description = "Single-GPU LoRA RL fine-tuning (GRPO / REINFORCE) of small LLMs, run locally"
+readme = "README.md"
+authors = [
+    { name = "Tianyang Li", email = "litianyang.research@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "torch>=2.7",
+    "transformers>=4.56",
+    "peft>=0.13.0",
+    "accelerate>=1.0",
+    "datasets>=3.0",
+    "tqdm>=4.66.0",
+    "numpy>=2.1",
+    "ipython>=9.17.1",
+]
+
+[project.optional-dependencies]
+wandb = ["wandb>=0.19"]
+
+[project.scripts]
+llm-rl-train = "llm_rl.train:main"
+llm-rl-eval = "llm_rl.eval:main"
+
+[tool.uv.build-backend]
+module-name = "llm_rl"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
