@@ -469,9 +469,58 @@ prose or `\boxed{}`). GRPO discovers the format in ~10 updates and then copies t
 number perfectly, so the whole pipeline (sampling, rewards, advantages, clipped loss,
 KL, LoRA updates) works end to end.
 
-### 7.2 math_hard + GRPO, 501 steps
+### 7.2 math_hard + GRPO, 501 steps — exit 0
 
-MATH_HARD_NOTEBOOK
+Flags: see `scripts/run_experiments.sh` (`--steps 501 --batch_size 8 --group_size 8
+--min_new_tokens 8 --max_new_tokens 512 --max_prompt_tokens 512 --temperature 0.8
+--top_p 0.95 --lr 3e-5 --ppo_epochs 2 --minibatch_size 4 --grad_accum_steps 16
+--clip_eps 0.2 --max_grad_norm 0.5 --kl_coef 0.05 --cuda_empty_cache_interval 50
+--math_hard_eval_n 512 --eval_interval 100 --save_interval 100`). Exit 0.
+
+Timeline: started 2026-09-23 23:45 EDT, finished 2026-09-25 01:52 EDT (~26 h wall
+clock, including 7 evals × ~12 min). Training alone: 24.71 h, ~161–183 s/step, peak GPU
+allocated 10.47 GB. Checkpoints: `runs/math_hard_grpo/checkpoints/step_000{100,200,300,400,500,501}`.
+
+Eval (greedy, 512 problems = deterministic first 512 of the level-5 numeric-answer test
+split; key prefix `eval/math_hard_test_subset_split_`):
+
+| step | boxed exact | relaxed exact | has `\boxed{}` |
+|---|---|---|---|
+| 0 (base) | **0.2266** | 0.2676 | 0.303 |
+| 99 | 0.2656 | 0.2930 | 0.369 |
+| 199 | 0.3652 | 0.4043 | 0.605 |
+| 299 | 0.3574 | 0.3691 | 0.713 |
+| 399 | 0.3906 | 0.4043 | 0.736 |
+| 499 | 0.4062 | 0.4141 | 0.908 |
+| 501 (final) | **0.4023** | 0.4062 | 0.906 |
+
+Training metrics, averaged over 50-step windows (the last window is step 500 alone):
+
+| steps | reward | rollout correct | KL | mean len | frac hit 512 | s/step |
+|---|---|---|---|---|---|---|
+| 0–49 | 0.275 | 0.239 | 0.000 | 473 | 0.688 | 179 |
+| 50–99 | 0.317 | 0.277 | 0.001 | 467 | 0.645 | 182 |
+| 100–149 | 0.341 | 0.296 | 0.003 | 458 | 0.588 | 183 |
+| 150–199 | 0.360 | 0.306 | 0.007 | 445 | 0.508 | 171 |
+| 200–249 | 0.472 | 0.403 | 0.018 | 416 | 0.340 | 178 |
+| 250–299 | 0.521 | 0.447 | 0.023 | 408 | 0.297 | 170 |
+| 300–349 | 0.600 | 0.521 | 0.031 | 393 | 0.246 | 176 |
+| 350–399 | 0.621 | 0.536 | 0.037 | 387 | 0.187 | 179 |
+| 400–449 | 0.604 | 0.520 | 0.040 | 393 | 0.188 | 177 |
+| 450–499 | 0.602 | 0.514 | 0.081 | 368 | 0.123 | 180 |
+| 500 | 0.344 | 0.250 | 0.136 | 351 | 0.078 | 162 |
+
+The PPO clip fraction averaged ~0 (rounds to 0.000). With `ppo_epochs 2` and lr 3e-5,
+the policy barely moves within one rollout batch, so the clip rarely triggers.
+
+Interpretation: +17.5 points boxed exact-match (22.7% → 40.2%, SE ≈ 2 points at n=512).
+The mechanism is visible in the rollout stats: the model learns to finish within
+512 tokens (truncation 69% → 12%) and to box its answer (30% → 91%). The relaxed parser
+also gains +13.8 points, so it's genuinely more correct, not just better formatted.
+Accuracy plateaus after ~step 400 while KL keeps rising.
+
+Note: the 2-step smoke test in §6.3 reported a 40.6% base accuracy, but that was on only
+the first 32 problems. The 512-problem baseline (22.7%) is the reliable number.
 
 ## 8. Model suggestions for this hardware
 

@@ -133,7 +133,7 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True llm-rl-train \
 ```
 
 Most of each step is `generate()` for 64 completions of up to 512 tokens, so the full
-501 steps take roughly **1 day** on this card. REINFORCE (single pass) is somewhat
+501 steps took **~26 h** here (24.7 h training + 7 evals of 512 problems at ~12 min each). REINFORCE (single pass) is somewhat
 faster per step. To iterate faster, try `--group_size 4`, `--max_new_tokens 256`, or a
 0.5B model.
 
@@ -185,9 +185,32 @@ The exact commands are in `scripts/run_experiments.sh`.
 Training reward went from 0.15 (step 0) to 1.30, the maximum, by step 10 and stayed
 there. KL to the base model was ≈ 0.2–0.3.
 
-### math_hard + GRPO, 501 steps
+### math_hard + GRPO, 501 steps (~26 h wall clock)
 
-MATH_HARD_RESULTS
+24.7 hours of training (~176 s/step), peak GPU allocated 10.5 GB. Eval: greedy decoding,
+512 held-out MATH level-5 test problems, max 512 new tokens.
+
+| Eval (512 problems) | Base | step 100 | step 200 | step 300 | step 400 | step 500 | Final (501) |
+|---|---|---|---|---|---|---|---|
+| Exact match, `\boxed{}` answer (the metric) | **22.7%** | 26.6% | 36.5% | 35.7% | 39.1% | 40.6% | **40.2%** |
+| Exact match, last number in output (relaxed) | 26.8% | 29.3% | 40.4% | 36.9% | 40.4% | 41.4% | 40.6% |
+| Output contains `\boxed{}` | 30.3% | 36.9% | 60.5% | 71.3% | 73.6% | 90.8% | 90.6% |
+
+**+17.5 points** of boxed exact-match (22.7% → 40.2%). The standard error at n=512 is
+~2 points, so this is well outside noise. What changed:
+
+- **Finishing within the budget.** The share of rollouts truncated at 512 tokens fell
+  from 69% (steps 0–49) to 12% (steps 450–499), and mean length went from 473 to 368
+  tokens. Most base-model failures were long solutions cut off before the final answer.
+- **Answer formatting.** `\boxed{}` usage rose from 30% to 91%.
+- **Actual correctness.** Even the relaxed last-number parser, which doesn't need
+  `\boxed{}`, improved by +13.8 points (26.8% → 40.6%). So the gain isn't only formatting.
+
+Training reward climbed from 0.28 (steps 0–49) to ~0.60–0.62 (steps 300–499), with
+rollout correctness going from 24% to ~52–54%. That's higher than the eval because
+rollouts sample at T=0.8 with 8 tries per prompt. KL to the base model grew to ~0.04 by
+step 400 and ~0.08–0.14 at the end. Accuracy plateaued after ~step 400, so more steps
+at this learning rate are unlikely to help much.
 
 ## Which models can this machine fine-tune?
 
