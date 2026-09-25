@@ -1,0 +1,6 @@
+{
+  "step": 51,
+  "algo": "grpo",
+  "task": "format_copy",
+  "model_name": "Qwen/Qwen2.5-Math-1.5B-Instruct"
+}

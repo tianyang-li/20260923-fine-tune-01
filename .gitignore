@@ -217,6 +217,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Training outputs
-runs/
+# Training outputs: keep configs/metrics/logs, not weights (optimizer.pt is 142MB,
+# over GitHub's 100MB limit) or per-checkpoint copies of the base tokenizer.
+runs/**/*.pt
+runs/**/adapter/*
+!runs/**/adapter/adapter_config.json
 wandb/

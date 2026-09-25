@@ -1,0 +1,6 @@
+{
+  "step": 501,
+  "algo": "grpo",
+  "task": "math_hard",
+  "model_name": "Qwen/Qwen2.5-Math-1.5B-Instruct"
+}

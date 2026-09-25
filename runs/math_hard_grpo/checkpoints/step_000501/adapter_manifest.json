@@ -1,0 +1,33 @@
+{
+  "step": 501,
+  "adapter_dir_exists": true,
+  "optimizer_state_exists": true,
+  "adapter_file_count": 6,
+  "adapter_total_bytes": 85342614,
+  "files": [
+    {
+      "path": "adapter/README.md",
+      "size_bytes": 5216
+    },
+    {
+      "path": "adapter/adapter_config.json",
+      "size_bytes": 1187
+    },
+    {
+      "path": "adapter/adapter_model.safetensors",
+      "size_bytes": 73911112
+    },
+    {
+      "path": "adapter/chat_template.jinja",
+      "size_bytes": 2513
+    },
+    {
+      "path": "adapter/tokenizer.json",
+      "size_bytes": 11421892
+    },
+    {
+      "path": "adapter/tokenizer_config.json",
+      "size_bytes": 694
+    }
+  ]
+}
